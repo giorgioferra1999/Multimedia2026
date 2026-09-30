@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orari lezioni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#14202b;--mute:#66768a;--line:#d9e0e7;--accent:#1f4fd8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e141b;--card:#18212b;--ink:#eaf0f6;--mute:#8fa1b5;--line:#263443;--accent:#7ea2ff}}
+:root[data-theme="dark"]{--bg:#0e141b;--card:#18212b;--ink:#eaf0f6;--mute:#8fa1b5;--line:#263443;--accent:#7ea2ff}
+*{box-sizing:border-box;margin:0}
+html,body{background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--mute);font-size:14px;margin-top:2px}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px;margin-top:14px}
+.seg button{flex:1;padding:9px 6px;border-radius:9px;font-weight:600;font-size:14px;color:var(--mute)}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+:root[data-theme="dark"] .seg button[aria-pressed=true]{color:#0e141b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .seg button[aria-pressed=true]{color:#0e141b}}
+.banner{margin-top:12px;padding:10px 14px;border-radius:12px;background:color-mix(in oklab,var(--accent) 12%,var(--bg));font-size:14px}
+.days{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px}
+.day{padding:10px 0 8px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:center;font-weight:600;font-size:14px}
+.day small{display:block;font-size:11px;font-weight:400;color:var(--mute);margin-top:3px;min-height:14px}
+.day[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.day[aria-pressed=true] small{color:inherit;opacity:.75}
+h2{font-size:19px;font-weight:800;margin:20px 0 10px}
+.lesson{display:grid;grid-template-columns:54px 1fr;gap:12px;margin-bottom:10px}
+.t{font-size:14px;font-weight:600;text-align:right;line-height:1.3;padding-top:12px}
+.t span{display:block;color:var(--mute);font-weight:400}
+.card{position:relative;background:color-mix(in oklab,var(--c) 13%,var(--card));border-left:5px solid var(--c);border-radius:6px 16px 16px 6px;padding:12px 14px;overflow:hidden}
+.card b{font-size:17px;font-weight:600;line-height:1.25;display:block}
+.card em{font-style:normal;font-size:13px;color:var(--mute);display:block;margin-top:4px}
+.card.done{opacity:.5}
+.card.now{box-shadow:0 0 0 2px var(--c)}
+.prog{position:absolute;left:0;bottom:0;height:3px;background:var(--c)}
+.free{padding:36px 16px;text-align:center;color:var(--mute);background:var(--card);border:1px dashed var(--line);border-radius:16px}
+.wk h3{font-size:15px;margin:16px 0 8px;display:flex;justify-content:space-between}
+.wk h3 span{color:var(--mute);font-weight:400}
+.mini{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:12px;padding:10px 12px;margin-bottom:6px;border-left:5px solid var(--c)}
+.mini i{font-style:normal;font-size:13px;color:var(--mute);min-width:96px}
+.mini b{font-weight:600;font-size:15px;line-height:1.2}
+</style>
+</head>
+<body>
+<h1>Orari lezioni</h1>
+<p class="sub" id="range"></p>
+<div class="seg" id="sem" role="group" aria-label="Semestre">
+  <button data-s="0">1° semestre</button><button data-s="1">2° semestre</button>
+</div>
+<div class="banner" id="banner" hidden></div>
+<div class="seg" id="view" role="group" aria-label="Vista">
+  <button data-v="day">Giorno</button><button data-v="week">Settimana</button>
+</div>
+<div id="app"></div>
+
+<script>
+const H={fot:200,inf:225,pro:275,sda:35,vid:345,met:150,ing:15,cul:185,tec:255};
+const L={
+ fot:"Fotografia 1.0",inf:"Informatica",pro:"Progettazione multimediale 1.0",
+ sda:"SdA Contemporanea 1.0",vid:"Elementi di produzione video",
+ met:"Metod. prog. della comunicazione visiva",ing:"Inglese",
+ cul:"Culture digitali",tec:"Tecniche e applicazioni digitali"};
+// [codice, inizio, fine]  giorni: 0=Lun ... 4=Ven
+const SEM=[
+ {nome:"1° semestre",da:"2026-10-15",a:"2027-01-30",g:[
+  [],
+  [["fot","9:00","13:00"],["fot","14:00","18:00"]],
+  [["inf","8:30","13:00"],["pro","13:30","18:00"]],
+  [["sda","9:30","12:30"],["vid","14:00","18:00"]],
+  [["met","9:00","13:00"],["met","14:00","17:00"]]]},
+ {nome:"2° semestre",da:"2027-03-01",a:"2027-06-04",g:[
+  [["ing","9:00","13:00"]],
+  [],
+  [["tec","8:30","13:00"],["pro","13:30","18:00"]],
+  [["sda","9:30","12:30"],["vid","14:00","18:00"]],
+  [["cul","9:00","13:00"]]]}
+];
+const GN=["Lun","Mar","Mer","Gio","Ven"],GF=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì"];
+const mins=t=>{const[a,b]=t.split(":");return +a*60+ +b};
+const d=s=>new Date(s+"T00:00:00");
+const fmt=s=>d(s).toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"});
+const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+const nowMin=now.getHours()*60+now.getMinutes();
+const wd=(now.getDay()+6)%7; // 0=Lun
+let sem=today<=d(SEM[0].a)?0:1, view="day", day=wd<5?wd:0;
+try{const v=localStorage.getItem("orari-view");if(v==="week"||v==="day")view=v}catch(e){}
+
+function inSem(){const s=SEM[sem];return today>=d(s.da)&&today<=d(s.a)}
+function card(l,isToday){
+  const [k,a,b]=l,s=mins(a),e=mins(b);
+  let cls="card",p="";
+  if(isToday){
+    if(nowMin>=e)cls+=" done";
+    else if(nowMin>=s){cls+=" now";p=`<div class="prog" style="width:${Math.round((nowMin-s)/(e-s)*100)}%"></div>`}
+  }
+  const h=(e-s)/60,dur=Number.isInteger(h)?h+" h":h.toString().replace(".",",")+" h";
+  const stato=isToday&&nowMin>=s&&nowMin<e?"In corso · ":"";
+  return `<div class="lesson" style="--c:hsl(${H[k]} 62% 46%)"><div class="t">${a}<span>${b}</span></div>
+  <div class="${cls}"><b>${L[k]}</b><em>${stato}${dur}</em>${p}</div></div>`;
+}
+function render(){
+  const s=SEM[sem];
+  document.getElementById("range").textContent=`${fmt(s.da)} – ${fmt(s.a)}`;
+  document.querySelectorAll("#sem button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.s===sem));
+  document.querySelectorAll("#view button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===view));
+  const bn=document.getElementById("banner");
+  if(today<d(s.da)){const n=Math.ceil((d(s.da)-today)/864e5);bn.hidden=false;bn.textContent=`Le lezioni iniziano il ${fmt(s.da).replace(/ \d{4}$/,"")}: mancano ${n} giorni.`}
+  else if(today>d(s.a)){bn.hidden=false;bn.textContent="Questo semestre è concluso."}
+  else bn.hidden=true;
+  const live=inSem(),app=document.getElementById("app");
+  if(view==="day"){
+    const strip=GN.map((n,i)=>`<button class="day" data-d="${i}" aria-pressed="${i===day}">${n}<small>${s.g[i].length?"•".repeat(Math.min(s.g[i].length,3)):""}</small></button>`).join("");
+    const ls=s.g[day];
+    const body=ls.length?ls.map(l=>card(l,live&&day===wd)).join(""):`<div class="free">Nessuna lezione: giornata libera</div>`;
+    app.innerHTML=`<div class="days">${strip}</div><h2>${GF[day]}${live&&day===wd?" · oggi":""}</h2>${body}`;
+    app.querySelectorAll(".day").forEach(b=>b.onclick=()=>{day=+b.dataset.d;render()});
+  }else{
+    app.innerHTML=`<div class="wk">`+s.g.map((ls,i)=>{
+      const tot=ls.reduce((n,l)=>n+(mins(l[2])-mins(l[1])),0)/60;
+      const rows=ls.length?ls.map(l=>`<div class="mini" style="--c:hsl(${H[l[0]]} 62% 46%)"><i>${l[1]} – ${l[2]}</i><b>${L[l[0]]}</b></div>`).join(""):`<div class="free" style="padding:14px">Giornata libera</div>`;
+      return `<h3>${GF[i]}${live&&i===wd?" · oggi":""}<span>${ls.length?tot.toString().replace(".",",")+" h":""}</span></h3>${rows}`}).join("")+`</div>`;
+  }
+}
+document.querySelectorAll("#sem button").forEach(b=>b.onclick=()=>{sem=+b.dataset.s;render()});
+document.querySelectorAll("#view button").forEach(b=>b.onclick=()=>{view=b.dataset.v;try{localStorage.setItem("orari-view",view)}catch(e){}render()});
+render();
+</script>
+</body>
+</html>
